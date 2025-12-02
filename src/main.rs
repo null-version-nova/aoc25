@@ -1,4 +1,4 @@
-use std::env::args;
+use std::{env::args, fs::File, io::Read};
 
 mod day1;
 mod day10;
@@ -12,6 +12,14 @@ mod day6;
 mod day7;
 mod day8;
 mod day9;
+
+pub fn read_from_file(path: &str) -> String {
+    let mut file = File::open(path).expect("input load failed :(");
+    let mut text = String::new();
+    file.read_to_string(&mut text)
+        .expect("Reading from string failed :(");
+    text
+}
 
 fn main() {
     let mut arg = args();

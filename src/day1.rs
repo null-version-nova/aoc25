@@ -3,6 +3,8 @@
 use std::str::FromStr;
 use std::{fs::File, io::Read};
 
+use crate::read_from_file;
+
 pub fn rotate(dial: i32, amount: i32) -> (i32, i32) {
     let mut result = dial + amount;
     let mut zeroes = 0;
@@ -23,14 +25,6 @@ pub fn rotate(dial: i32, amount: i32) -> (i32, i32) {
         zeroes += 1;
     }
     (result, zeroes)
-}
-
-pub fn read_from_file(path: &str) -> String {
-    let mut file = File::open(path).expect("input load failed :(");
-    let mut text = String::new();
-    file.read_to_string(&mut text)
-        .expect("Reading from string failed :(");
-    text
 }
 
 pub fn read_to_iterator(text: &str) -> impl Iterator<Item = i32> {
