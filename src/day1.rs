@@ -1,7 +1,6 @@
 // Contains both day 1 answers!
 
 use std::str::FromStr;
-use std::{fs::File, io::Read};
 
 use crate::read_from_file;
 
