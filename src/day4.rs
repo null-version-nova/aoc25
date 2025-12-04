@@ -34,7 +34,7 @@ impl FullSpace {
                 );
                 if space.is_some() {
                     let sp = space.unwrap();
-                    if *sp != Space::Empty || *sp != Space::Removed {
+                    if *sp != Space::Empty && *sp != Space::Removed {
                         amount += 1;
                     }
                 } else {
