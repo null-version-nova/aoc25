@@ -56,43 +56,51 @@ pub fn part1() {
 
 #[derive(Debug)]
 struct SplitFailure {
-    failure_point: u64
+    failure_point: u64,
 }
 
-fn find_most_and_split(bank: &str, size_desired: usize, failure_point: u64) -> Result<(u64,&str),SplitFailure> {
+fn find_most_and_split(
+    bank: &str,
+    size_desired: usize,
+    failure_point: u64,
+) -> Result<(u64, &str), SplitFailure> {
     let mut most: u64 = 0;
     let mut most_index: usize = 0;
     for battery in bank.char_indices() {
         let joltage = char_to_int(battery.1);
-        if joltage > most {
+        if joltage > most && joltage < failure_point {
             most = joltage;
             most_index = battery.0;
         }
     }
     if (bank.len() - most_index) >= size_desired {
-        let split = bank.split_at(most_index+1).1;
+        let split = bank.split_at_checked(most_index + 1).unwrap_or(("", "")).1;
         // println!("Split bank {} into {} and {}", bank, most, split);
         return Ok((most, split));
     } else {
-        return Err(SplitFailure { failure_point: most });
+        return Err(SplitFailure {
+            failure_point: most,
+        });
     }
 }
 
 fn iterate_split(bank: &str, size_desired: usize, pending_result: u64, failure_point: u64) -> u64 {
-    let result = find_most_and_split(bank, size_desired,failure_point);
-    println!("Split bank into {} with result {}", bank, pending_result);
+    let result = find_most_and_split(bank, size_desired, failure_point);
+    println!(
+        "Split bank into {} with result {} with {} remaining and failure point {}...",
+        bank, pending_result, size_desired, failure_point
+    );
     if result.is_ok() {
         let res = result.unwrap();
-        if size_desired > 1 {
-            return iterate_split(res.1, size_desired - 1, pending_result * 10 + res.0,failure_point);
+        if size_desired > 0 {
+            return iterate_split(res.1, size_desired - 1, pending_result * 10 + res.0, 10);
         } else {
             return pending_result;
         }
     } else {
         let res = result.unwrap_err();
-        return iterate_split(bank, size_desired, pending_result, res.failure_point)
+        return iterate_split(bank, size_desired, pending_result, res.failure_point);
     }
-    todo!()
 }
 
 pub fn part2() {
@@ -100,9 +108,12 @@ pub fn part2() {
     let banks = file.lines();
     let mut maximum_joltage: u64 = 0;
     for bank in banks {
-        let mut joltage: u64;
-        joltage = iterate_split(bank, 12,0,10);
+        let joltage = iterate_split(bank, 12, 0, 10);
         maximum_joltage += joltage;
+        println!(
+            "Bank analysis shows output of {} and maximum output of {}!",
+            joltage, maximum_joltage
+        );
     }
     println!("The total output joltage is {}!", maximum_joltage);
 }
