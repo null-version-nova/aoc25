@@ -1,6 +1,6 @@
 use std::{
     cmp::{max, min},
-    ops::RangeInclusive,
+    ops::RangeInclusive, vec,
 };
 
 use crate::read_from_file;
@@ -44,62 +44,6 @@ where
     None
 }
 
-fn consolidate_range(
-    ranges: &Vec<RangeInclusive<u64>>,
-    range: &RangeInclusive<u64>,
-) -> Option<RangeInclusive<u64>> {
-    let mut consol_range = range.clone();
-    for other_range in ranges {
-        let mut start_subsumed = false;
-        let mut end_subsumed = false;
-        if other_range.contains(consol_range.start()) {
-            start_subsumed = true;
-        }
-        if other_range.contains(consol_range.end()) {
-            consol_range = join_range(&consol_range, other_range).unwrap();
-            end_subsumed = true;
-        }
-        if start_subsumed && end_subsumed && (range != other_range) {
-            return None;
-        }
-    }
-    Some(consol_range)
-}
-
-enum ConsolData {
-    Changed(usize, RangeInclusive<u64>),
-    Unchanged,
-    Removed(usize),
-}
-
-fn consolidate_ranges(ranges: &Vec<RangeInclusive<u64>>) -> ConsolData {
-    for idx in 0..ranges.len() {
-        let consol_range = consolidate_range(ranges, &ranges[idx]);
-        if consol_range.is_none() {
-            println!(
-                "At index {} redundant range {}-{} is removed!",
-                idx,
-                ranges[idx].start(),
-                ranges[idx].end()
-            );
-            return ConsolData::Removed(idx);
-        }
-        let consol_range = consol_range.expect("we just checked it");
-        if consol_range != ranges[idx] {
-            println!(
-                "At index {} range {}-{} is changed to {}-{}",
-                idx,
-                ranges[idx].start(),
-                ranges[idx].end(),
-                consol_range.start(),
-                consol_range.end()
-            );
-            return ConsolData::Changed(idx, consol_range);
-        }
-    }
-    ConsolData::Unchanged
-}
-
 fn check_overlap(ranges: &Vec<RangeInclusive<u64>>) -> bool {
     for range in ranges {
         for other_range in ranges {
@@ -122,39 +66,29 @@ pub fn part2() {
         ranges.push(result.0.parse().unwrap()..=result.1.parse().unwrap());
     }
     ranges.sort_by(|a, b| a.start().cmp(b.start()));
-    let mut counter = 10;
     println!("Overlap check yields result: {}!", check_overlap(&ranges));
-    loop {
-        println!("Starting pass...");
-        let result = consolidate_ranges(&ranges);
-        match result {
-            ConsolData::Removed(index) => {
-                ranges.remove(index);
-            }
-            ConsolData::Unchanged => {
-                if counter > 0 {
-                    counter -= 1;
-                } else {
-                    break;
-                }
-            }
-            ConsolData::Changed(idx, new) => {
-                ranges[idx] = new;
+    let mut unique: Vec<RangeInclusive<u64>> = vec![];
+    for range in &ranges {
+        if let Some(last) = unique.last_mut() {
+            if let Some(joined) = join_range(last, &range) {
+                *last = joined;
+                continue;
             }
         }
+        unique.push(range.clone());
     }
-    println!("Overlap check yields result: {}!", check_overlap(&ranges));
+    println!("Overlap check yields result: {}!", check_overlap(&unique));
     let mut size: u64 = 0;
-    for idx in 0..ranges.len() {
+    for idx in 0..unique.len() {
         println!(
             "{}: {}-{}, size of {}, added to {}",
             idx,
-            ranges[idx].start(),
-            ranges[idx].end(),
-            ranges[idx].end() - ranges[idx].start() + 1,
+            unique[idx].start(),
+            unique[idx].end(),
+            unique[idx].end() - unique[idx].start() + 1,
             size
         );
-        size += ranges[idx].end() - ranges[idx].start() + 1;
+        size += unique[idx].end() - unique[idx].start() + 1;
     }
     println!("There are {} fresh items!", size);
 }
