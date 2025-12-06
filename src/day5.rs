@@ -1,12 +1,9 @@
 use std::{
-    cmp::{max, min},
-    ops::RangeInclusive, vec,
+    cmp::{max, min}, fs::read_to_string, ops::RangeInclusive, vec
 };
 
-use crate::read_from_file;
-
 pub fn part1() {
-    let input = read_from_file("./inputs/5.txt");
+    let input = read_to_string("./inputs/5.txt").expect("File should exist!");
     let mut ranges: Vec<RangeInclusive<u64>> = vec![];
     let mut ids: Vec<u64> = vec![];
     let mut is_range = true;
@@ -56,7 +53,7 @@ fn check_overlap(ranges: &Vec<RangeInclusive<u64>>) -> bool {
 }
 
 pub fn part2() {
-    let input = read_from_file("./inputs/5.txt");
+    let input = read_to_string("./inputs/5.txt").expect("File should exist!");
     let mut ranges: Vec<RangeInclusive<u64>> = vec![];
     for i in input.lines() {
         if i.len() == 0 {
