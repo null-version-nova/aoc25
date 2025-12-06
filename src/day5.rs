@@ -1,4 +1,7 @@
-use std::ops::RangeInclusive;
+use std::{
+    cmp::{max, min},
+    ops::RangeInclusive,
+};
 
 use crate::read_from_file;
 
@@ -31,6 +34,16 @@ pub fn part1() {
     println!("Total amount fresh is {}!", amount_fresh);
 }
 
+fn join_range<T>(first: &RangeInclusive<T>, second: &RangeInclusive<T>) -> Option<RangeInclusive<T>>
+where
+    T: Ord + Copy,
+{
+    if second.contains(first.end()) || first.contains(second.end()) {
+        return Some(min(*first.start(), *second.start())..=max(*first.end(), *second.end()));
+    }
+    None
+}
+
 fn consolidate_range(
     ranges: &Vec<RangeInclusive<u64>>,
     range: &RangeInclusive<u64>,
@@ -40,15 +53,11 @@ fn consolidate_range(
         let mut start_subsumed = false;
         let mut end_subsumed = false;
         if other_range.contains(consol_range.start()) {
-            consol_range = *other_range.start()..=*consol_range.end();
             start_subsumed = true;
         }
         if other_range.contains(consol_range.end()) {
-            consol_range = *consol_range.start()..=*other_range.end();
+            consol_range = join_range(&consol_range, other_range).unwrap();
             end_subsumed = true;
-        }
-        if other_range.start() - 1 == *consol_range.end() {
-            consol_range = *consol_range.start()..=*other_range.end();
         }
         if start_subsumed && end_subsumed && (range != other_range) {
             return None;
@@ -58,11 +67,12 @@ fn consolidate_range(
 }
 
 enum ConsolData {
-    Changed(bool),
+    Changed(usize, RangeInclusive<u64>),
+    Unchanged,
     Removed(usize),
 }
 
-fn consolidate_ranges(ranges: &mut Vec<RangeInclusive<u64>>) -> ConsolData {
+fn consolidate_ranges(ranges: &Vec<RangeInclusive<u64>>) -> ConsolData {
     for idx in 0..ranges.len() {
         let consol_range = consolidate_range(ranges, &ranges[idx]);
         if consol_range.is_none() {
@@ -84,11 +94,21 @@ fn consolidate_ranges(ranges: &mut Vec<RangeInclusive<u64>>) -> ConsolData {
                 consol_range.start(),
                 consol_range.end()
             );
-            ranges[idx] = consol_range;
-            return ConsolData::Changed(true);
+            return ConsolData::Changed(idx, consol_range);
         }
     }
-    ConsolData::Changed(false)
+    ConsolData::Unchanged
+}
+
+fn check_overlap(ranges: &Vec<RangeInclusive<u64>>) -> bool {
+    for range in ranges {
+        for other_range in ranges {
+            if range != other_range && other_range.contains(range.start()) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 pub fn part2() {
@@ -101,28 +121,40 @@ pub fn part2() {
         let result = i.split_once('-').expect("Not a range?");
         ranges.push(result.0.parse().unwrap()..=result.1.parse().unwrap());
     }
+    ranges.sort_by(|a, b| a.start().cmp(b.start()));
     let mut counter = 10;
+    println!("Overlap check yields result: {}!", check_overlap(&ranges));
     loop {
         println!("Starting pass...");
-        let result = consolidate_ranges(&mut ranges);
+        let result = consolidate_ranges(&ranges);
         match result {
             ConsolData::Removed(index) => {
                 ranges.remove(index);
             }
-            ConsolData::Changed(false) => {
+            ConsolData::Unchanged => {
                 if counter > 0 {
                     counter -= 1;
                 } else {
                     break;
                 }
             }
-            _ => {}
+            ConsolData::Changed(idx, new) => {
+                ranges[idx] = new;
+            }
         }
     }
+    println!("Overlap check yields result: {}!", check_overlap(&ranges));
     let mut size: u64 = 0;
     for idx in 0..ranges.len() {
-        println!("{}: {}-{}", idx, ranges[idx].start(), ranges[idx].end());
-        size += (ranges[idx].end() - ranges[idx].start()) + 1;
+        println!(
+            "{}: {}-{}, size of {}, added to {}",
+            idx,
+            ranges[idx].start(),
+            ranges[idx].end(),
+            ranges[idx].end() - ranges[idx].start() + 1,
+            size
+        );
+        size += ranges[idx].end() - ranges[idx].start() + 1;
     }
     println!("There are {} fresh items!", size);
 }
