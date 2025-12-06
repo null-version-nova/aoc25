@@ -116,12 +116,12 @@ fn print_string_rep(
     println!("\"{}\"", r4[idx]);
 }
 
-fn print_number_rep(numbers: &Vec<(Vec<u32>, bool)>, idx: usize) {
+fn print_number_rep(problem: &(Vec<u32>, bool), idx: usize) {
     println!(
         "At index {} a problem with mult-value {} contains these numbers:",
-        idx, numbers[idx].1
+        idx, problem.1
     );
-    for i in &numbers[idx].0 {
+    for i in &problem.0 {
         println!("{}", i)
     }
 }
@@ -130,73 +130,44 @@ pub fn part2() {
     let problems = {
         let input = read_to_string("./inputs/6.txt").expect("File should exist");
         let mut lines = input.lines();
-        let row1 = line_to_numbers(lines.next().expect("Row should exist."));
-        let row2 = line_to_numbers(lines.next().expect("Row should exist."));
-        let row3 = line_to_numbers(lines.next().expect("Row should exist."));
-        let row4 = line_to_numbers(lines.next().expect("Row should exist."));
-        let row5 = lines
-            .next()
-            .expect("Fifth row should exist.")
-            .split_whitespace();
-        let mut operators: Vec<bool> = vec![];
-        for num in row5 {
-            operators.push(num == "*");
-        }
-        if row1.len() != row2.len() {
-            println!(
-                "Something is very wrong! {} and {} should be the same number!",
-                row1.len(),
-                row2.len()
-            );
-        }
-        if row1.len() != operators.len() {
-            println!(
-                "Something is very wrong! {} and {} should be the same number!",
-                row1.len(),
-                operators.len()
-            );
-        }
+        let mut row1 = lines.next().expect("Row should exist.").chars();
+        let mut row2 = lines.next().expect("Row should exist.").chars();
+        let mut row3 = lines.next().expect("Row should exist.").chars();
+        let mut row4 = lines.next().expect("Row should exist.").chars();
+        let mut row5 = lines.next().expect("Row should exist.").chars();
         let mut problems: Vec<(Vec<u32>, bool)> = vec![];
-        for idx in 0..row1.len() {
-            let mut numbers: Vec<u32> = vec![];
-            let mut counter = 0;
-            loop {
-                let mut all_none = true;
-                let number_chars = [
-                    row1[idx].chars().nth(counter),
-                    row2[idx].chars().nth(counter),
-                    row3[idx].chars().nth(counter),
-                    row4[idx].chars().nth(counter),
-                ];
-                let mut number: u32 = 0;
-                for char in number_chars {
-                    match char {
-                        Some(' ') => {}
-                        Some(c) => {
-                            all_none = false;
-                            number *= 10;
-                            number += c.to_digit(10).expect("Nothing except spaces and digits!");
-                        }
-                        None => {}
+        let mut problem: (Vec<u32>, bool) = (vec![], false);
+        for idx in 0..row1.clone().count() {
+            let chars = [
+                row1.next().expect("We're not exceeding here!"),
+                row2.next().expect("We're not exceeding here!"),
+                row3.next().expect("We're not exceeding here!"),
+                row4.next().expect("We're not exceeding here!"),
+                row5.next().expect("We're not exceeding here!"),
+            ];
+            if chars[4] != ' ' {
+                // print_number_rep(&problem, idx);
+                if problem.0.len() == 0 && idx != 0 {
+                    println!("Something is wrong with the last problem!");
+                }
+                problems.push(problem);
+                problem = (vec![], chars[4] == '*');
+            }
+            let mut number = 0;
+            for char in &chars[0..4] {
+                match char {
+                    ' ' => {}
+                    _ => {
+                        number *= 10;
+                        number += char.to_digit(10).expect("This should be a digit.");
                     }
                 }
-                if all_none {
-                    break;
-                }
-                numbers.push(number);
-                counter += 1;
             }
-            // println!("Problem {} is...", idx);
-            // for i in &numbers {
-            //     println!("{}", i);
-            // }
-            if numbers.len() == 0 {
-                print_string_rep(&row1, &row2, &row3, &row4, idx);
-                println!("Something is strange at index {}!", idx);
+            if number != 0 {
+                problem.0.push(number);
             }
-            problems.push((numbers, operators[idx]));
         }
-        // print_number_rep(&problems, 990);
+        problems.push(problem);
         problems
     };
     let mut sum = 0;
