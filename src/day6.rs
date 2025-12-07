@@ -81,51 +81,6 @@ pub fn part1() {
     println!("Total sum is {}!", sum);
 }
 
-fn line_to_numbers(line: &str) -> Vec<String> {
-    let mut output = vec![];
-    let mut prev_whitespace = true;
-    let mut temp_string: String = String::new();
-    for char in line.chars() {
-        if char == ' ' && prev_whitespace == false {
-            prev_whitespace = true;
-            output.push(temp_string.clone());
-            // println!("Pushing string \"{}\"!", temp_string);
-            temp_string.clear();
-            continue;
-        }
-        if char != ' ' {
-            prev_whitespace = false;
-        }
-        temp_string.push(char);
-    }
-    output.push(temp_string);
-    output
-}
-
-fn print_string_rep(
-    r1: &Vec<String>,
-    r2: &Vec<String>,
-    r3: &Vec<String>,
-    r4: &Vec<String>,
-    idx: usize,
-) {
-    println!("String rep idx: {}", idx);
-    println!("\"{}\"", r1[idx]);
-    println!("\"{}\"", r2[idx]);
-    println!("\"{}\"", r3[idx]);
-    println!("\"{}\"", r4[idx]);
-}
-
-fn print_number_rep(problem: &(Vec<u32>, bool), idx: usize) {
-    println!(
-        "At index {} a problem with mult-value {} contains these numbers:",
-        idx, problem.1
-    );
-    for i in &problem.0 {
-        println!("{}", i)
-    }
-}
-
 pub fn part2() {
     let problems = {
         let input = read_to_string("./inputs/6.txt").expect("File should exist");
