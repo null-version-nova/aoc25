@@ -35,7 +35,7 @@ impl JunctionBox {
         closest
     }
     pub fn connect(first: usize, second: usize, boxes: &mut Vec<JunctionBox>, distance: i64) {
-        println!("Connecting boxes {} and {}", first, second);
+        // println!("Connecting boxes {} and {}", first, second);
         boxes[first].connected.push(second);
         boxes[second].connected.push(first);
         if boxes[first].furthest_connected_distance < distance {
@@ -54,16 +54,16 @@ fn scan_purge_add(
     circuit: &mut Vec<usize>,
 ) -> bool {
     if !site.contains(&index) {
-        println!("Skipping index {}", index);
+        // println!("Skipping index {}", index);
         return false;
     }
-    println!("Consolidating index {}", index);
+    // println!("Consolidating index {}", index);
     site.remove(&index);
     circuit.push(index);
     for idx in &list[index].connected {
         scan_purge_add(*idx, list, site, circuit);
     }
-    println!("Finished consolidating index {}", index);
+    // println!("Finished consolidating index {}", index);
     true
 }
 
@@ -119,4 +119,63 @@ pub fn part1() {
     );
 }
 
-pub fn part2() {}
+pub fn part2() {
+    let mut box_list = {
+        let input = read_to_string("./inputs/8.txt")
+            .expect("Runtime environment reports that you forgot the file you moron!");
+        let mut boxes = vec![];
+        for line in input.lines() {
+            let mut line = line.split(',');
+            boxes.push(JunctionBox::new(
+                line.next().unwrap().parse().unwrap(),
+                line.next().unwrap().parse().unwrap(),
+                line.next().unwrap().parse().unwrap(),
+            ));
+        }
+        boxes
+    };
+    let mut counter = 0;
+    loop {
+        counter += 1;
+        let mut mostest_closest: Option<(usize, usize)> = None;
+        let mut closest_distance = i64::MAX;
+        for idx in 0..box_list.len() {
+            // println!("Finding closest to {}", idx);
+            let closest = box_list[idx]
+                .get_closest(&box_list)
+                .expect("There isn't a closest box somehow...");
+            if closest_distance > closest.1 {
+                closest_distance = closest.1;
+                mostest_closest.replace((idx, closest.0));
+            }
+        }
+        if mostest_closest.is_some() {
+            let (first, second) = mostest_closest.unwrap();
+            JunctionBox::connect(first, second, &mut box_list, closest_distance);
+        } else {
+            println!("Something's going wrong...");
+        }
+        let mut boxes = BTreeSet::from_iter(0..box_list.len());
+        let mut circuits: Vec<Vec<usize>> = vec![];
+        while !boxes.is_empty() {
+            // Due to the condition we can verify that boxes.first() is Some(_)
+            let mut circuit = vec![];
+            let idx = *boxes.first().unwrap();
+            scan_purge_add(idx, &box_list, &mut boxes, &mut circuit);
+            circuits.push(circuit);
+        }
+        let (first, second) = mostest_closest.unwrap();
+        println!(
+            "Iteration {} complete, there are {} circuits presently. Circuits {} and {} were connected",
+            counter,
+            circuits.len(),
+            first,
+            second
+        );
+        if circuits.len() == 1 {
+            let result = box_list[first].x * box_list[second].x;
+            println!("The grand result is {}!", result);
+            break;
+        }
+    }
+}
