@@ -43,10 +43,11 @@ pub fn part1() {
 
 struct Manifold {
     corners: Vec<(i64, i64)>,
+    corner_directions: Vec<(bool, bool)>,
     distance: Vec<i64>,
     up_first: bool,
     circumference: usize,
-    relevant_indices: Option<Vec<(i64, i64)>>,
+    relevant_indices: Option<Vec<Vec<(i64, i64)>>>,
 }
 
 impl Manifold {
@@ -54,13 +55,33 @@ impl Manifold {
         let mut distance = vec![];
         let up_first = corners[0].0 == corners[1].0;
         let mut is_vertical = up_first;
-        for i in 0..(corners.len() - 1) {
+        let mut corner_directions = vec![];
+        let curr_distance = if is_vertical {
+            corners[1].1 - corners[0].1
+        } else {
+            corners[1].0 - corners[0].0
+        };
+        distance.push(curr_distance);
+        if is_vertical {
+            corner_directions.push((false, curr_distance.is_positive()));
+        } else {
+            corner_directions.push((curr_distance.is_positive(), false));
+        }
+        is_vertical = !is_vertical;
+        for i in 1..(corners.len() - 1) {
             let curr_distance = if is_vertical {
                 corners[i + 1].1 - corners[i].1
             } else {
                 corners[i + 1].0 - corners[i].0
             };
             distance.push(curr_distance);
+            if is_vertical {
+                corner_directions
+                    .push((distance[i - 1].is_positive(), curr_distance.is_positive()));
+            } else {
+                corner_directions
+                    .push((curr_distance.is_positive(), distance[i - 1].is_positive()));
+            }
             is_vertical = !is_vertical;
         }
         let curr_distance = if is_vertical {
@@ -69,19 +90,37 @@ impl Manifold {
             corners.last().unwrap().0 - corners[0].0
         };
         distance.push(curr_distance);
+        if is_vertical {
+            corner_directions.push((
+                distance[corners.len() - 1].is_positive(),
+                curr_distance.is_positive(),
+            ));
+        } else {
+            corner_directions.push((
+                curr_distance.is_positive(),
+                distance[corners.len() - 1].is_positive(),
+            ));
+        }
+        if is_vertical {
+            corner_directions[0].1 = curr_distance.is_positive();
+        } else {
+            corner_directions[0].0 = curr_distance.is_positive();
+        }
         let mut circumference = 0;
         for i in &distance {
             // println!("Adding {} to {}", *i, circumference);
             circumference += i.abs();
         }
         println!(
-            "Manifold created with circumference {}, with {} corners, and with {} distances",
+            "Manifold created with circumference {}, with {} corners, with {} corner directions, and with {} distances",
             circumference,
             corners.len(),
+            corner_directions.len(),
             distance.len()
         );
         let mut output = Manifold {
             corners,
+            corner_directions,
             distance,
             up_first,
             circumference: circumference as usize,
@@ -99,11 +138,12 @@ impl Manifold {
         self.corners.len()
     }
 
-    fn full_index(&self, index: usize) -> ((i64, i64), bool) {
+    fn full_index(&self, index: usize) -> ((i64, i64), bool, usize) {
         let mut idx = index;
         let mut is_vertical = self.up_first;
         let mut starting_point = self.corners[0];
         let mut iterator = self.distance.iter();
+        let mut counter = 0;
         loop {
             let distance = *iterator.next().unwrap();
             if idx > (distance.abs() as usize) {
@@ -114,6 +154,7 @@ impl Manifold {
                 }
                 is_vertical = !is_vertical;
                 idx -= distance.abs() as usize;
+                counter += 1;
             } else {
                 let amount = if distance.is_negative() {
                     -(idx as i64)
@@ -125,7 +166,7 @@ impl Manifold {
                 } else {
                     starting_point.0 += amount;
                 }
-                return (starting_point, is_vertical);
+                return (starting_point, is_vertical, counter);
             }
         }
     }
@@ -136,61 +177,51 @@ impl Manifold {
 
     pub fn get_area(&self, first: usize, second: usize) -> Option<i64> {
         let first_tile = self.index(first);
-        let mut left1 = false;
-        let mut right1 = false;
-        let mut up1 = false;
-        let mut down1 = false;
         let second_tile = self.index(second);
-        let mut left2 = false;
-        let mut right2 = false;
-        let mut up2 = false;
-        let mut down2 = false;
-        for idx in first..=second {
-            let tile = self.index(idx);
-            if tile.0 > first_tile.0 {
-                right1 = true;
-            } else if tile.0 < first_tile.0 {
-                left1 = true;
-            }
-            if tile.1 > first_tile.1 {
-                up1 = true;
-            } else if tile.1 < first_tile.1 {
-                down1 = true;
-            }
-            if tile.0 > second_tile.0 {
-                right2 = true;
-            } else if tile.0 < second_tile.0 {
-                left2 = true;
-            }
-            if tile.1 > second_tile.1 {
-                up2 = true;
-            } else if tile.1 < second_tile.1 {
-                down2 = true;
-            }
-        }
-        if left1 && right1 && up1 && down1 {
-            println!("At index {} and {} with no result", first, second);
+
+        let x_maximum = first_tile.0.max(second_tile.0);
+        let x_minimum = first_tile.0.min(second_tile.0);
+        let y_maximum = first_tile.1.max(second_tile.1);
+        let y_minimum = first_tile.1.min(second_tile.1);
+
+        if self.corner_directions[first] == self.corner_directions[second] {
+            println!(
+                "Square ({},{})-({},{}) is bounded by like corners, which invalidates it",
+                first_tile.0, first_tile.1, second_tile.0, second_tile.1
+            );
             return None;
         }
-        if left2 && right2 && up2 && down2 {
-            println!("At index {} and {} with no result", first, second);
-            return None;
+
+        for idx in 0..self.corners.len() {
+            let span = &self.relevant_indices.as_ref().unwrap()[idx];
+            for tile in span {
+                if tile.0 < x_maximum
+                    && tile.0 > x_minimum
+                    && tile.1 < y_maximum
+                    && tile.1 > y_minimum
+                {
+                    println!(
+                        "Tile {}-{} intersects the square of ({},{})-({},{}) and thus disqualifies it",
+                        tile.0, tile.1, first_tile.0, first_tile.1, second_tile.0, second_tile.1
+                    );
+                    return None;
+                }
+            }
         }
         let result = Some(
             (((second_tile.0.abs_diff(first_tile.0)) + 1)
                 * (second_tile.1.abs_diff(first_tile.1) + 1)) as i64,
         );
-        // print!("{} {} ",(second_tile.0.abs_diff(first_tile.0)) + 1,(second_tile.1.abs_diff(first_tile.1) + 1));
-        // println!(
-        //     "At index {} ({}-{}) and {} ({}-{}) with result {}",
-        //     first,
-        //     first_tile.0,
-        //     first_tile.1,
-        //     second,
-        //     second_tile.0,
-        //     second_tile.1,
-        //     result.unwrap()
-        // );
+        println!(
+            "At index {} ({}-{}) and {} ({}-{}) with result {}",
+            first,
+            first_tile.0,
+            first_tile.1,
+            second,
+            second_tile.0,
+            second_tile.1,
+            result.unwrap()
+        );
         result
     }
 
@@ -202,23 +233,48 @@ impl Manifold {
             x_coordinates.insert(corner.0);
             y_coordinates.insert(corner.1);
         }
-        let mut relevant_indices = vec![];
-        for idx in 0..self.full_len() {
-            let tile = self.full_index(idx);
-            if !tile.1 {
-                if x_coordinates.contains(&tile.0.0) {
-                    relevant_indices.push(tile.0);
+        let mut relevant_indices: Vec<Vec<(i64, i64)>> = vec![];
+        let mut tracker = self.corners[0];
+        let mut is_vertical = self.up_first;
+        for span in &self.distance {
+            let mut current_span = vec![];
+            let step = if span.is_negative() { -1 } else { 1 };
+            if is_vertical {
+                for _ in 0..span.abs() {
+                    tracker.1 += step;
+                    if y_coordinates.contains(&tracker.1) {
+                        current_span.push(tracker);
+                    } else if y_coordinates.contains(&(tracker.1 + 1)) {
+                        current_span.push(tracker);
+                    } else if y_coordinates.contains(&(tracker.1 - 1)) {
+                        current_span.push(tracker);
+                    }
                 }
             } else {
-                if y_coordinates.contains(&tile.0.1) {
-                    relevant_indices.push(tile.0);
+                for _ in 0..span.abs() {
+                    tracker.0 += step;
+                    if x_coordinates.contains(&tracker.0) {
+                        current_span.push(tracker);
+                    } else if x_coordinates.contains(&(tracker.0 + 1)) {
+                        current_span.push(tracker);
+                    } else if x_coordinates.contains(&(tracker.0 - 1)) {
+                        current_span.push(tracker);
+                    }
                 }
             }
+            is_vertical = !is_vertical;
+            relevant_indices.push(current_span);
         }
+        let length = {
+            let mut length = 0;
+            for i in &relevant_indices {
+                length += i.len();
+            }
+            length
+        };
         println!(
             "Relevant indices computed with a length of {} compared to the original length of {}!",
-            relevant_indices.len(),
-            self.circumference
+            length, self.circumference
         );
         let _ = self.relevant_indices.insert(relevant_indices);
     }
@@ -226,7 +282,7 @@ impl Manifold {
 
 pub fn part2() {
     let red_tiles = {
-        let input = read_to_string("./inputs/9.test.txt").unwrap();
+        let input = read_to_string("./inputs/9.txt").unwrap();
         let mut red_tiles = vec![];
         for line in input.lines() {
             let (x, y) = line.split_once(",").unwrap();
