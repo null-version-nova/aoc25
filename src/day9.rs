@@ -130,46 +130,10 @@ impl Manifold {
         output
     }
 
-    fn full_len(&self) -> usize {
-        self.circumference as usize
-    }
-
     pub fn len(&self) -> usize {
         self.corners.len()
     }
 
-    fn full_index(&self, index: usize) -> ((i64, i64), bool, usize) {
-        let mut idx = index;
-        let mut is_vertical = self.up_first;
-        let mut starting_point = self.corners[0];
-        let mut iterator = self.distance.iter();
-        let mut counter = 0;
-        loop {
-            let distance = *iterator.next().unwrap();
-            if idx > (distance.abs() as usize) {
-                if is_vertical {
-                    starting_point.1 += distance;
-                } else {
-                    starting_point.0 += distance;
-                }
-                is_vertical = !is_vertical;
-                idx -= distance.abs() as usize;
-                counter += 1;
-            } else {
-                let amount = if distance.is_negative() {
-                    -(idx as i64)
-                } else {
-                    idx as i64
-                };
-                if is_vertical {
-                    starting_point.1 += amount;
-                } else {
-                    starting_point.0 += amount;
-                }
-                return (starting_point, is_vertical, counter);
-            }
-        }
-    }
 
     pub fn index(&self, index: usize) -> (i64, i64) {
         self.corners[index]
