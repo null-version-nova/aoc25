@@ -14,17 +14,31 @@ pub fn part1() {
         }
         red_tiles
     };
+    let mut height = 0;
+    let mut width = 0;
+    for tile in &red_tiles {
+        if tile.0 > width {
+            width = tile.0;
+        }
+        if tile.1 > height {
+            height = tile.1;
+        }
+    }
     // In quadratic time you could just check the areas of all of them and get the biggest one. I did a quadratic time solution yesterday though, and it's too obvious and boring.
-    let red_tiles = {
-        // They have been sorted by hypotenuse! No clue if this will work, mind you!
-        red_tiles.sort_by(|first, second| {
-            (first.0 * first.0 + first.1 * first.1)
-                .cmp(&(second.0 * second.0 + second.1 * second.1))
-        });
-        red_tiles
-    };
-    let result = get_area(*red_tiles.first().unwrap(), *red_tiles.last().unwrap());
-    println!("The result is {}", result);
+    red_tiles.sort_by(|first, second| {
+        (first.0 * first.0 + first.1 * first.1).cmp(&(second.0 * second.0 + second.1 * second.1))
+    });
+    let lowest_left = *red_tiles.first().unwrap();
+    let highest_right = *red_tiles.last().unwrap();
+    red_tiles.sort_by(|first, second| {
+        (first.0 * first.0 + (first.1 - height) * (first.1 - height))
+            .cmp(&(second.0 * second.0 + (second.1 - height) * (second.1 - height)))
+    });
+    let highest_left = *red_tiles.first().unwrap();
+    let lowest_right = *red_tiles.last().unwrap();
+    let result_1 = get_area(lowest_left, highest_right);
+    let result_2 = get_area(highest_left, lowest_right);
+    println!("The results are {} and {}", result_1,result_2);
 }
 
 pub fn part2() {}
