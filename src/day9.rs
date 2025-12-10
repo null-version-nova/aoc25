@@ -1,4 +1,4 @@
-use std::fs::read_to_string;
+use std::{collections::BTreeSet, fs::read_to_string};
 
 fn get_area(first: (i64, i64), second: (i64, i64)) -> i64 {
     ((second.0 - first.0 + 1) * (second.1 - first.1 + 1)).abs()
@@ -46,18 +46,19 @@ struct Manifold {
     distance: Vec<i64>,
     up_first: bool,
     circumference: usize,
+    relevant_indices: Option<Vec<(i64, i64)>>,
 }
 
 impl Manifold {
     pub fn new(corners: Vec<(i64, i64)>) -> Self {
         let mut distance = vec![];
-        let up_first = corners[0].0 == corners[1].1;
+        let up_first = corners[0].0 == corners[1].0;
         let mut is_vertical = up_first;
         for i in 0..(corners.len() - 1) {
             let curr_distance = if is_vertical {
-                corners[i + 1].0 - corners[i].0
-            } else {
                 corners[i + 1].1 - corners[i].1
+            } else {
+                corners[i + 1].0 - corners[i].0
             };
             distance.push(curr_distance);
             is_vertical = !is_vertical;
@@ -79,20 +80,27 @@ impl Manifold {
             corners.len(),
             distance.len()
         );
-        Manifold {
+        let mut output = Manifold {
             corners,
             distance,
             up_first,
             circumference: circumference as usize,
-        }
+            relevant_indices: None,
+        };
+        output.compute_relevant_indices();
+        output
     }
 
-    pub fn len(&self) -> usize {
+    fn full_len(&self) -> usize {
         self.circumference as usize
     }
 
-    pub fn index(&self, index: usize) -> (i64, i64) {
-        let idx = index;
+    pub fn len(&self) -> usize {
+        self.corners.len()
+    }
+
+    fn full_index(&self, index: usize) -> ((i64, i64), bool) {
+        let mut idx = index;
         let mut is_vertical = self.up_first;
         let mut starting_point = self.corners[0];
         let mut iterator = self.distance.iter();
@@ -105,6 +113,7 @@ impl Manifold {
                     starting_point.0 += distance;
                 }
                 is_vertical = !is_vertical;
+                idx -= distance.abs() as usize;
             } else {
                 let amount = if distance.is_negative() {
                     -(idx as i64)
@@ -116,9 +125,13 @@ impl Manifold {
                 } else {
                     starting_point.0 += amount;
                 }
-                return starting_point;
+                return (starting_point, is_vertical);
             }
         }
+    }
+
+    pub fn index(&self, index: usize) -> (i64, i64) {
+        self.corners[index]
     }
 
     pub fn get_area(&self, first: usize, second: usize) -> Option<i64> {
@@ -156,21 +169,64 @@ impl Manifold {
             }
         }
         if left1 && right1 && up1 && down1 {
+            println!("At index {} and {} with no result", first, second);
             return None;
         }
         if left2 && right2 && up2 && down2 {
+            println!("At index {} and {} with no result", first, second);
             return None;
         }
-        Some(
-            ((second_tile.0 - first_tile.0).abs() + 1)
-                * ((second_tile.1 - first_tile.1 + 1).abs() + 1),
-        )
+        let result = Some(
+            (((second_tile.0.abs_diff(first_tile.0)) + 1)
+                * (second_tile.1.abs_diff(first_tile.1) + 1)) as i64,
+        );
+        // print!("{} {} ",(second_tile.0.abs_diff(first_tile.0)) + 1,(second_tile.1.abs_diff(first_tile.1) + 1));
+        // println!(
+        //     "At index {} ({}-{}) and {} ({}-{}) with result {}",
+        //     first,
+        //     first_tile.0,
+        //     first_tile.1,
+        //     second,
+        //     second_tile.0,
+        //     second_tile.1,
+        //     result.unwrap()
+        // );
+        result
+    }
+
+    fn compute_relevant_indices(&mut self) {
+        println!("Computing relevant indices...");
+        let mut x_coordinates = BTreeSet::new();
+        let mut y_coordinates = BTreeSet::new();
+        for corner in &self.corners {
+            x_coordinates.insert(corner.0);
+            y_coordinates.insert(corner.1);
+        }
+        let mut relevant_indices = vec![];
+        for idx in 0..self.full_len() {
+            let tile = self.full_index(idx);
+            if !tile.1 {
+                if x_coordinates.contains(&tile.0.0) {
+                    relevant_indices.push(tile.0);
+                }
+            } else {
+                if y_coordinates.contains(&tile.0.1) {
+                    relevant_indices.push(tile.0);
+                }
+            }
+        }
+        println!(
+            "Relevant indices computed with a length of {} compared to the original length of {}!",
+            relevant_indices.len(),
+            self.circumference
+        );
+        let _ = self.relevant_indices.insert(relevant_indices);
     }
 }
 
 pub fn part2() {
     let red_tiles = {
-        let input = read_to_string("./inputs/9.txt").unwrap();
+        let input = read_to_string("./inputs/9.test.txt").unwrap();
         let mut red_tiles = vec![];
         for line in input.lines() {
             let (x, y) = line.split_once(",").unwrap();
@@ -182,7 +238,7 @@ pub fn part2() {
     for first in 0..red_tiles.len() {
         // This on the other hand is probably worse than quadratic time...
         for second in 0..red_tiles.len() {
-            println!("At index {} and {}", first, second);
+            // println!("At index {} and {}", first, second,);
             let area = red_tiles.get_area(first, second);
             if area.is_some() {
                 if area.unwrap() > most_area {
