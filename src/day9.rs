@@ -1,7 +1,12 @@
 use std::fs::read_to_string;
 
 fn get_area(first: (i64, i64), second: (i64, i64)) -> i64 {
-    ((second.0 - first.0) * (second.1 - first.1)).abs()
+    let answer = ((second.0 - first.0 + 1) * (second.1 - first.1 + 1)).abs();
+    println!(
+        "Between {}-{} and {}-{} the area is {}",
+        first.0, first.1, second.0, second.1, answer
+    );
+    answer
 }
 
 pub fn part1() {
@@ -25,20 +30,16 @@ pub fn part1() {
         }
     }
     // In quadratic time you could just check the areas of all of them and get the biggest one. I did a quadratic time solution yesterday though, and it's too obvious and boring.
-    red_tiles.sort_by(|first, second| {
-        (first.0 * first.0 + first.1 * first.1).cmp(&(second.0 * second.0 + second.1 * second.1))
-    });
-    let lowest_left = *red_tiles.first().unwrap();
-    let highest_right = *red_tiles.last().unwrap();
-    red_tiles.sort_by(|first, second| {
-        (first.0 * first.0 + (first.1 - height) * (first.1 - height))
-            .cmp(&(second.0 * second.0 + (second.1 - height) * (second.1 - height)))
-    });
-    let highest_left = *red_tiles.first().unwrap();
-    let lowest_right = *red_tiles.last().unwrap();
-    let result_1 = get_area(lowest_left, highest_right);
-    let result_2 = get_area(highest_left, lowest_right);
-    println!("The results are {} and {}", result_1,result_2);
+    let mut most_area = 0;
+    for tile1 in &red_tiles {
+        for tile2 in &red_tiles {
+            let area = get_area(*tile1, *tile2);
+            if area > most_area {
+                most_area = area;
+            }
+        }
+    }
+    println!("The most area is {}", most_area);
 }
 
 pub fn part2() {}
